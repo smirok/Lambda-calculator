@@ -16,7 +16,7 @@ import Data.Function (on)
 
 type Symb = String 
 
-infixl 2 :@
+infixl 4 :@
 
 data Expr = Var Symb
           | Expr :@ Expr
