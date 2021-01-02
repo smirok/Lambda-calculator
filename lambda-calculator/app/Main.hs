@@ -1,5 +1,10 @@
 module Main where
 
+import TypeInference
 
 main :: IO ()
-main = putStrLn "Hello World!"
+main = do
+    putStrLn "Enter expression"
+    s <- getLine
+    putStrLn $ getType s
+    main
