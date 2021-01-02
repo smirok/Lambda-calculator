@@ -2,13 +2,14 @@ module LambdaCalculus where
 
 import Text.ParserCombinators.Parsec (
     Parser(..),
-    many1,
+    many,
     spaces,
     (<|>),
     sepBy1,
     sepEndBy1,
     char,
     string,
+    letter,
     alphaNum,
     runParser)
 import Data.List (union, maximumBy)
@@ -88,7 +89,7 @@ betaEq :: Expr -> Expr -> Bool
 betaEq lExpr rExpr = nf lExpr `betaEq` nf rExpr
 
 parseVariable :: Parser String
-parseVariable = spaces >> many1 alphaNum
+parseVariable = spaces >> (:) <$> letter <*> many alphaNum
 
 parseVar :: Parser Expr
 parseVar = Var <$> parseVariable    

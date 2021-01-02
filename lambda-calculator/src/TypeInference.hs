@@ -4,21 +4,35 @@ module TypeInference where
 import Data.List
 import Control.Monad.Except
 import Control.Monad.State
-import LambdaCalculus (
-    Symb,
-    Expr(..),
-    freeVars)
+import LambdaCalculus
+import Text.ParserCombinators.Parsec
 
 infixr 3 :->
 
 -- Тип
 data Type = TVar Symb 
           | Type :-> Type
-  deriving (Eq,Show)
+  deriving (Eq)
+
+instance Show Type where
+  showsPrec _ (TVar sym)           = showString sym
+  showsPrec _ (TVar sym :-> type') = showString sym . showString " -> " . shows type'
+  showsPrec _ (type' :-> TVar sym) = showChar '(' . shows type' . showChar ')' . showString " -> " . showString sym
+  showsPrec _ (type1 :-> type2)    = showChar '(' . shows type1 . showChar ')' . showString " -> " . shows type2
 
 -- Контекст
 newtype Env = Env [(Symb,Type)]
-  deriving (Eq,Show)
+  deriving (Eq)
+
+instance Show Env where
+  showsPrec _ (Env []) = showString "()"
+  showsPrec _ (Env env) = 
+    showString "(" . 
+    foldr 
+      (\x rec -> showString (fst x) . showString " : " . shows (snd x) . showString ", " . rec)
+      (showString (fst $ last env) . showString " : " . shows (snd $ last env))
+      (init env) . 
+    showString ")"
 
 -- Подстановка
 newtype SubsTy = SubsTy [(Symb, Type)]
@@ -73,7 +87,7 @@ composeSubsTy :: SubsTy -> SubsTy -> SubsTy
 composeSubsTy sub1 sub2 = makeCompose (getKeys sub1 sub2) sub1 sub2
 
 instance Semigroup SubsTy where
-  (<>) = undefined
+  (<>) = composeSubsTy
 
 instance Monoid SubsTy where
   mempty  = SubsTy []
@@ -93,9 +107,9 @@ unify (t1 :-> t2) (s1 :-> s2) = do
   return $ u1 <> u2
 
 equations :: MonadError String m => Env -> Expr -> Type -> m [(Type, Type)]
-equations ctxt expr t = evalStateT (equations' ctxt expr t) "ini" 
+equations ctxt expr t = evalStateT (equations' ctxt expr t) (-1)
   where
-    equations' :: MonadError String m => Env -> Expr -> Type -> StateT String m [(Type,Type)]
+    equations' :: MonadError String m => Env -> Expr -> Type -> StateT Int m [(Type,Type)]
     equations' context (Var sym) type' = do
       new_type <- appEnv context sym
       return [(type', new_type)]
@@ -109,23 +123,28 @@ equations ctxt expr t = evalStateT (equations' ctxt expr t) "ini"
       new'<- getNewVar
       ans1 <- equations' (extendEnv context sym new) expr new'
       return $ union ans1 [(new :-> new', type')]
-    getNewVar :: MonadError String m => StateT String m Type
+    getNewVar :: MonadError String m => StateT Int m Type
     getNewVar = do
-      modify ('\'' :)
-      gets TVar
-
+      modify (+ 1)
+      s <- get
+      return $ TVar ('t':show s)
 
 getContext :: Expr -> Env
-getContext expr = Env $ map (fmap TVar) $ foldr
-  (\x rec -> if null rec then [(x, "a")] else (x, '\'' : snd (head rec)) : rec)
-  []
-  (freeVars expr)
+getContext expr = Env $ zipWith (curry $ fmap TVar) arr (map (\x -> 'a':show x) [0..length arr]) where
+  arr = freeVars expr
 
 foldEquations :: [(Type,Type)] -> (Type, Type)
 foldEquations = foldr1 (\(x,y) (xrec,yrec) -> (x :-> xrec, y :-> yrec))
 
 principlePair :: (MonadError String m) =>  Expr -> m (Env,Type)
 principlePair expr = do
-  system       <- equations (getContext expr) expr (TVar "varname")
+  system       <- equations (getContext expr) expr (TVar "b")
   main_unifier <- uncurry unify (foldEquations system)
-  return (appSubsEnv main_unifier (getContext expr), appSubsTy main_unifier (TVar "varname"))
+  return (appSubsEnv main_unifier (getContext expr), appSubsTy main_unifier (TVar "b"))
+
+getType :: String -> String
+getType str = case runParser parseExpr () "" str of
+  Left err   -> show err
+  Right expr -> case runExcept (principlePair expr) of
+    Left err           -> "Typecheck error : " ++ show err
+    Right (env, type') -> show env ++ " => " ++ show type'
