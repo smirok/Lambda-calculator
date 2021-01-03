@@ -51,7 +51,7 @@ subst var newTerm oldTerm@(Lam sym expr)
     | notElem sym $ freeVars newTerm = Lam sym (subst var newTerm expr)
     | otherwise                      = Lam newSym (subst var newTerm newExpr)
     where
-        newSym  = maximumBy (compare `on` length) (freeVars newTerm `union` freeVars expr)
+        newSym  = maximumBy (compare `on` length) (freeVars newTerm `union` freeVars expr) ++ "\'"
         newExpr = subst sym (Var newSym) expr
 
 infix 1 `alphaEq`
