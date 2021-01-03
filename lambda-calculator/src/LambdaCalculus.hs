@@ -86,7 +86,7 @@ nf expr = case reduceOnce expr of
 infix 1 `betaEq`
 
 betaEq :: Expr -> Expr -> Bool 
-betaEq lExpr rExpr = nf lExpr `betaEq` nf rExpr
+betaEq lExpr rExpr = nf lExpr `alphaEq` nf rExpr
 
 parseVariable :: Parser String
 parseVariable = spaces >> (:) <$> letter <*> many alphaNum
