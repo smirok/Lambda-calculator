@@ -23,6 +23,12 @@ dependencies:
 - base >= 4.7 && < 5
 - parsec
 - mtl
+- hedgehog
+- HUnit
+- tasty
+- tasty-hedgehog
+- tasty-hunit
+- tasty-discover
 
 library:
   source-dirs: src
@@ -40,7 +46,7 @@ executables:
 
 tests:
   lambda-calculator-test:
-    main:                Spec.hs
+    main:                Test.hs
     source-dirs:         test
     ghc-options:
     - -threaded
