@@ -1,7 +1,6 @@
 module Test.LambdaCalculus where
 
 import Test.Tasty.HUnit (Assertion, (@?=))
-import System.Exit
 import LambdaCalculus
 import Combinators
 
